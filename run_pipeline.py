@@ -10,6 +10,7 @@ Run the full UFC fight prediction pipeline.
 6. Predict: upcoming fights -> module_07_predict/output/upcoming_predictions_yyyymmdd.csv
 
 Use --quick for reduced training (~1 min) during development.
+Use --storage both to also read/write Azure Blob (set AZURE_STORAGE_CONNECTION_STRING).
 """
 
 import argparse
@@ -32,32 +33,64 @@ def run(cmd: list[str], desc: str):
 def main():
     parser = argparse.ArgumentParser(description="Run UFC fight prediction pipeline")
     parser.add_argument("--quick", action="store_true", help="Use quick training (~1 min) for testing")
+    parser.add_argument(
+        "--storage",
+        choices=["local", "azure", "both"],
+        default="both",
+        help="Where to read/write data. both = disk + Azure Blob (default), local = disk only.",
+    )
     args = parser.parse_args()
+
+    storage_args = ["--storage", args.storage]
 
     start = time.perf_counter()
     # 1. Scrape
-    run(["module_01_scrapers/ufc_fight_scraper.py", "--incremental"], "1. Scrape past fights (incremental)")
-    run(["module_01_scrapers/ufc_fighter_scraper.py", "--incremental"], "2. Scrape fighters (incremental)")
-    run(["module_01_scrapers/ufc_upcoming_scraper.py"], "3. Scrape upcoming fights (all)")
+    run(
+        ["module_01_scrapers/ufc_fight_scraper.py", "--incremental"] + storage_args,
+        "1. Scrape past fights (incremental)",
+    )
+    run(
+        ["module_01_scrapers/ufc_fighter_scraper.py", "--incremental"] + storage_args,
+        "2. Scrape fighters (incremental)",
+    )
+    run(
+        ["module_01_scrapers/ufc_upcoming_scraper.py"] + storage_args,
+        "3. Scrape upcoming fights (all)",
+    )
 
-    # 2. Clean (each module writes its output to the next module's input)
-    run(["module_02_clean_fighters/clean_ufc_fighters.py"], "4. Clean fighters")
-    run(["module_03_clean_fights/clean_ufc_fights.py"], "5. Clean fights")
+    # 2. Clean
+    run(
+        ["module_02_clean_fighters/clean_ufc_fighters.py"] + storage_args,
+        "4. Clean fighters",
+    )
+    run(
+        ["module_03_clean_fights/clean_ufc_fights.py"] + storage_args,
+        "5. Clean fights",
+    )
 
     # 3. Feature engineering
-    run(["module_04_feature_engineering/feature_engineering.py"], "6. Feature engineering")
+    run(
+        ["module_04_feature_engineering/feature_engineering.py"] + storage_args,
+        "6. Feature engineering",
+    )
 
     # 4. Split
-    run(["module_05_split/prep_and_split.py", "-d"], "7. Split data")
+    run(
+        ["module_05_split/prep_and_split.py", "-d"] + storage_args,
+        "7. Split data",
+    )
 
-    # 5. Train (full grid search, prepares upcoming for module 7)
-    train_cmd = ["module_06_model/train_tuned.py"]
+    # 5. Train
+    train_cmd = ["module_06_model/train_tuned.py"] + storage_args
     if args.quick:
         train_cmd.append("--quick")
     run(train_cmd, "8. Train best model" + (" (quick)" if args.quick else ""))
 
     # 6. Predict
-    run(["module_07_predict/predict_upcoming.py"], "9. Predict upcoming fights")
+    run(
+        ["module_07_predict/predict_upcoming.py"] + storage_args,
+        "9. Predict upcoming fights",
+    )
 
     elapsed = time.perf_counter() - start
     print("\n" + "=" * 60)

@@ -1,5 +1,6 @@
-# Run UFC fight prediction pipeline every Sunday morning (quick training).
-name: Run pipeline (weekly)
+# Run UFC fight prediction pipeline every Sunday morning
+# Requires repository secret: AZURE_STORAGE_CONNECTION_STRING
+name: Run pipeline
 
 on:
   schedule:
@@ -10,6 +11,9 @@ on:
 jobs:
   pipeline:
     runs-on: ubuntu-latest
+    env:
+      AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,8 +26,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run pipeline (quick)
-        run: python run_pipeline.py --quick
+      - name: Run pipeline (quick, local + Azure)
+        run: python run_pipeline.py --quick --storage both
 
       - name: Upload predictions
         uses: actions/upload-artifact@v4
