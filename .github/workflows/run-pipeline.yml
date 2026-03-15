@@ -25,21 +25,6 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Get secret from Key Vault
-        run: |
-          set -e
-          SECRET=$(az keyvault secret show \
-            --vault-name kv-azure-lab-ufc \
-            --name AZURE-STORAGE-CONNECTION-STRING \
-            --query value -o tsv)
-
-          if [ -z "$SECRET" ]; then
-            echo "Failed to retrieve secret from Key Vault"
-            exit 1
-          fi
-
-          echo "AZURE_STORAGE_CONNECTION_STRING=$SECRET" >> $GITHUB_ENV
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -50,8 +35,6 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run UFC pipeline
-        env:
-          AZURE_STORAGE_CONNECTION_STRING: ${{ env.AZURE_STORAGE_CONNECTION_STRING }}
         run: python run_pipeline.py --quick --storage azure
 
       - name: Upload predictions artifact
