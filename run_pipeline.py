@@ -7,7 +7,7 @@ Run the full UFC fight prediction pipeline.
 3. Feature engineering
 4. Split data
 5. Train: full grid search, pick best model (also prepares upcoming for module 7)
-6. Predict: upcoming fights -> module_07/output/upcoming_predictions.csv
+6. Predict: upcoming fights -> module_07_predict/output/upcoming_predictions_yyyymmdd.csv
 
 Use --quick for reduced training (~1 min) during development.
 """
@@ -61,7 +61,7 @@ def main():
 
     elapsed = time.perf_counter() - start
     print("\n" + "=" * 60)
-    print("Pipeline complete. Predictions: module_07_predict/output/upcoming_predictions.csv")
+    print("Pipeline complete. Predictions: module_07_predict/output/upcoming_predictions_yyyymmdd.csv")
     print(f"Total runtime: {elapsed:.1f} seconds ({elapsed/60:.1f} min)")
     print("=" * 60)
 
