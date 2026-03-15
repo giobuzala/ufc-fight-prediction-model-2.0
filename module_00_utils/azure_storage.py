@@ -9,31 +9,55 @@ from azure.core.exceptions import ResourceExistsError
 from azure.storage.blob import BlobServiceClient
 from dotenv import load_dotenv
 
+# Connection string is always read from Key Vault; env is not used.
+KEY_VAULT_NAME = "kv-azure-lab-ufc"
+KEY_VAULT_SECRET_NAME = "AZURE-STORAGE-CONNECTION-STRING"
 
 _container_client = None
+
+
+def _get_connection_string() -> str:
+    """
+    Get Azure Storage connection string from Key Vault only.
+
+    Uses KEY_VAULT_NAME and KEY_VAULT_SECRET_NAME with DefaultAzureCredential.
+    Environment variables are not used for the connection string.
+    """
+    try:
+        from azure.identity import DefaultAzureCredential
+        from azure.keyvault.secrets import SecretClient
+
+        kv_uri = f"https://{KEY_VAULT_NAME}.vault.azure.net"
+        credential = DefaultAzureCredential()
+        client = SecretClient(vault_url=kv_uri, credential=credential)
+        secret = client.get_secret(KEY_VAULT_SECRET_NAME)
+        value = (secret.value or "").strip()
+        if not value:
+            raise ValueError("Key Vault secret is empty")
+        return value
+    except Exception as e:
+        raise ValueError(
+            f"Could not read connection string from Key Vault '{KEY_VAULT_NAME}' "
+            f"(secret '{KEY_VAULT_SECRET_NAME}'): {e}. "
+            "Ensure the vault exists and the app has access."
+        ) from e
 
 
 def _get_container_client():
     """
     Lazily initialize Azure Blob container client.
 
-    This keeps local-only runs working even when Azure env vars are not set,
-    as long as Azure functions are not called.
+    Connection string is always from Key Vault. Container name may come from
+    AZURE_STORAGE_CONTAINER env (default 'pipeline-data').
     """
     global _container_client
     if _container_client is not None:
         return _container_client
 
     load_dotenv()
-    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+    connection_string = _get_connection_string()
+
     container_name = os.getenv("AZURE_STORAGE_CONTAINER", "pipeline-data")
-
-    if not connection_string:
-        raise ValueError(
-            "AZURE_STORAGE_CONNECTION_STRING is not set. "
-            "Add it to your environment or .env file."
-        )
-
     blob_service_client = BlobServiceClient.from_connection_string(connection_string)
     _container_client = blob_service_client.get_container_client(container_name)
     try:

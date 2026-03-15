@@ -10,7 +10,7 @@ Run the full UFC fight prediction pipeline.
 6. Predict: upcoming fights -> module_07_predict/output/upcoming_predictions_yyyymmdd.csv
 
 Use --quick for reduced training (~1 min) during development.
-Use --storage both to also read/write Azure Blob (set AZURE_STORAGE_CONNECTION_STRING).
+Use --storage both to also read/write Azure Blob (connection string from Key Vault, see module_00_utils.azure_storage).
 """
 
 import argparse

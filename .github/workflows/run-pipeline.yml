@@ -1,12 +1,13 @@
 # Run UFC fight prediction pipeline every Sunday morning
-# Requires repository secret: AZURE_STORAGE_CONNECTION_STRING
+# Uses Azure Key Vault for secrets
+
 name: Run pipeline
 
 on:
   schedule:
     # Sunday at 06:00 UTC
     - cron: "0 6 * * 0"
-  workflow_dispatch:  # Allow manual run from Actions tab
+  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -14,24 +15,46 @@ env:
 jobs:
   pipeline:
     runs-on: ubuntu-latest
-    env:
-      AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get secret from Key Vault
+        run: |
+          set -e
+          SECRET=$(az keyvault secret show \
+            --vault-name kv-azure-lab-ufc \
+            --name AZURE-STORAGE-CONNECTION-STRING \
+            --query value -o tsv)
+
+          if [ -z "$SECRET" ]; then
+            echo "Failed to retrieve secret from Key Vault"
+            exit 1
+          fi
+
+          echo "AZURE_STORAGE_CONNECTION_STRING=$SECRET" >> $GITHUB_ENV
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run pipeline (quick, Azure only)
+      - name: Run UFC pipeline
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ env.AZURE_STORAGE_CONNECTION_STRING }}
         run: python run_pipeline.py --quick --storage azure
 
-      - name: Upload predictions
+      - name: Upload predictions artifact
         uses: actions/upload-artifact@v4
         with:
           name: upcoming_predictions
