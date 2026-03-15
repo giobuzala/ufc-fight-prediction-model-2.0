@@ -102,9 +102,11 @@ def _randomize_fighter_order(df: pd.DataFrame) -> pd.DataFrame:
             out.loc[swap, c2] = df.loc[swap, c1].values
 
     # Negate differential columns (diff = f1 - f2; after swap, diff = f2 - f1 = -diff)
+    # Convert to numeric first so assignment works when df came from Azure (astype(str))
     diff_cols = [c for c in df.columns if c.endswith("_differential")]
     for c in diff_cols:
-        out.loc[swap, c] = pd.to_numeric(out.loc[swap, c], errors="coerce") * -1
+        out[c] = pd.to_numeric(out[c], errors="coerce")
+        out.loc[swap, c] = out.loc[swap, c] * -1
 
     return out
 
