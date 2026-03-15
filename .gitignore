@@ -1,0 +1,8 @@
+# Python bytecode cache
+__pycache__/
+
+# Local env
+.env
+
+# Data files
+*.csv

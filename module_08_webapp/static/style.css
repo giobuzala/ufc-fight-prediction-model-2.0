@@ -1,0 +1,278 @@
+/* UFC Fight Predictor - Clean two-column layout inspired by UFC stats */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Oswald", "Helvetica Neue", Arial, sans-serif;
+  background: #fff;
+  color: #1a1a1a;
+  line-height: 1.4;
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin: 0 0 20px;
+}
+
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  border-bottom: 2px solid #ddd;
+}
+
+.tab {
+  padding: 12px 24px;
+  text-decoration: none;
+  color: #666;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab:hover {
+  color: #1a1a1a;
+}
+
+.tab.active {
+  color: #c00;
+  border-bottom-color: #c00;
+}
+
+.main {
+  min-height: 320px;
+}
+
+.panel {
+  display: none;
+}
+
+.panel.active {
+  display: block;
+}
+
+/* Predict form */
+.matchup-form {
+  background: #f8f8f8;
+  padding: 24px;
+  border-radius: 8px;
+  margin-bottom: 32px;
+  max-width: 400px;
+}
+
+.form-row {
+  margin-bottom: 16px;
+}
+
+.form-row label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.btn-primary {
+  margin-top: 8px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #c00;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+}
+
+.btn-primary:hover {
+  background: #a00;
+}
+
+.btn-primary:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+/* Matchup display - two column layout like screenshot */
+.matchup-display {
+  margin-top: 24px;
+}
+
+.bout-title {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin: 0 0 24px;
+  color: #333;
+}
+
+.fighters-row {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.fighter-col {
+  flex: 1;
+  text-align: center;
+}
+
+.fighter-left { text-align: left; }
+.fighter-right { text-align: right; }
+
+.fighter-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.fighter-accent {
+  height: 4px;
+  margin-bottom: 20px;
+}
+
+.accent-red { background: #c00; }
+.accent-blue { background: #0066cc; }
+
+.fighter-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fighter-left .stat-row { justify-content: flex-start; }
+.fighter-right .stat-row { justify-content: flex-end; }
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fighter-left .stat-row {
+  flex-direction: row;
+}
+.fighter-right .stat-row {
+  flex-direction: row-reverse;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #666;
+  min-width: 70px;
+  text-align: left;
+}
+
+.fighter-right .stat-label {
+  text-align: right;
+}
+
+.stat-val {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.f1-val { color: #c00; }
+.f2-val { color: #0066cc; }
+
+.vs-divider {
+  display: flex;
+  align-items: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #999;
+  padding: 0 16px;
+}
+
+.prediction-result {
+  margin-top: 28px;
+  padding: 16px;
+  background: #f0f8f0;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.prediction-winner {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.confidence {
+  color: #555;
+  font-weight: normal;
+  font-size: 0.95rem;
+}
+
+/* Upcoming fights table */
+.data-note {
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.upcoming-table-wrap {
+  overflow-x: auto;
+}
+
+.upcoming-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.upcoming-table th,
+.upcoming-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.upcoming-table th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #555;
+  text-transform: uppercase;
+}
+
+.upcoming-table tbody tr:hover {
+  background: #f8f8f8;
+}

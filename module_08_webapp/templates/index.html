@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="predict-panel" class="panel active">
+  <p class="data-note">Fighters who fought in the past 5 years (as of {{ ref_date }})</p>
+  <div class="matchup-form">
+    <div class="form-row">
+      <label>Division</label>
+      <select id="division" class="form-control">
+        <option value="men">Men</option>
+        <option value="women">Women</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Fighter 1</label>
+      <select id="fighter1" class="form-control">
+        <option value="">-- Select fighter --</option>
+        {% for f in fighters.men %}
+        <option value="{{ f.name }}" data-div="men">{{ f.name }}</option>
+        {% endfor %}
+        {% for f in fighters.women %}
+        <option value="{{ f.name }}" data-div="women">{{ f.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Fighter 2</label>
+      <select id="fighter2" class="form-control">
+        <option value="">-- Select fighter --</option>
+        {% for f in fighters.men %}
+        <option value="{{ f.name }}" data-div="men">{{ f.name }}</option>
+        {% endfor %}
+        {% for f in fighters.women %}
+        <option value="{{ f.name }}" data-div="women">{{ f.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Weight Class</label>
+      <select id="weight-class" class="form-control">
+        <option value="Heavyweight">Heavyweight</option>
+        <option value="Light Heavyweight">Light Heavyweight</option>
+        <option value="Middleweight" selected>Middleweight</option>
+        <option value="Welterweight">Welterweight</option>
+        <option value="Lightweight">Lightweight</option>
+        <option value="Featherweight">Featherweight</option>
+        <option value="Bantamweight">Bantamweight</option>
+        <option value="Flyweight">Flyweight</option>
+        <option value="Women's Bantamweight">Women's Bantamweight</option>
+        <option value="Women's Flyweight">Women's Flyweight</option>
+        <option value="Women's Featherweight">Women's Featherweight</option>
+        <option value="Women's Strawweight">Women's Strawweight</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Rounds</label>
+      <select id="rounds" class="form-control">
+        <option value="3">3</option>
+        <option value="5">5</option>
+      </select>
+    </div>
+    <button id="btn-predict" class="btn-primary">Predict Winner</button>
+  </div>
+
+  <div id="matchup-display" class="matchup-display" style="display:none;">
+    <h2 class="bout-title"><span id="weight-class-label">MIDDLEWEIGHT</span> BOUT</h2>
+    <div class="fighters-row">
+      <div class="fighter-col fighter-left">
+        <h3 id="f1-name" class="fighter-name">Fighter 1</h3>
+        <div class="fighter-accent accent-red"></div>
+        <div class="fighter-stats" id="stats-f1">
+          <div class="stat-row"><span class="stat-label">RECORD</span><span class="stat-val f1-val" id="f1-record">--</span></div>
+          <div class="stat-row"><span class="stat-label">HEIGHT</span><span class="stat-val f1-val" id="f1-height">--</span></div>
+          <div class="stat-row"><span class="stat-label">REACH</span><span class="stat-val f1-val" id="f1-reach">--</span></div>
+          <div class="stat-row"><span class="stat-label">STANCE</span><span class="stat-val f1-val" id="f1-stance">--</span></div>
+        </div>
+      </div>
+      <div class="vs-divider">VS</div>
+      <div class="fighter-col fighter-right">
+        <h3 id="f2-name" class="fighter-name">Fighter 2</h3>
+        <div class="fighter-accent accent-blue"></div>
+        <div class="fighter-stats" id="stats-f2">
+          <div class="stat-row"><span class="stat-label">RECORD</span><span class="stat-val f2-val" id="f2-record">--</span></div>
+          <div class="stat-row"><span class="stat-label">HEIGHT</span><span class="stat-val f2-val" id="f2-height">--</span></div>
+          <div class="stat-row"><span class="stat-label">REACH</span><span class="stat-val f2-val" id="f2-reach">--</span></div>
+          <div class="stat-row"><span class="stat-label">STANCE</span><span class="stat-val f2-val" id="f2-stance">--</span></div>
+        </div>
+      </div>
+    </div>
+    <div id="prediction-result" class="prediction-result" style="display:none;">
+      <p class="prediction-winner">Predicted winner: <strong id="pred-winner">--</strong> <span class="confidence">(<span id="pred-confidence">--</span>% confidence)</span></p>
+    </div>
+  </div>
+</div>
+
+<div id="upcoming-panel" class="panel">
+  <p class="data-note">Upcoming fight predictions from last pipeline run</p>
+  <div class="upcoming-table-wrap">
+    <table class="upcoming-table">
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Date</th>
+          <th>Fighter 1</th>
+          <th>Fighter 2</th>
+          <th>Division</th>
+          <th>Predicted Winner</th>
+          <th>Confidence</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in upcoming %}
+        <tr>
+          <td>{{ row.event_name }}</td>
+          <td>{{ row.event_date }}</td>
+          <td>{{ row.fighter_1 }}</td>
+          <td>{{ row.fighter_2 }}</td>
+          <td>{{ row.weight_class }}</td>
+          <td><strong>{{ row.predicted_winner }}</strong></td>
+          <td>{{ "%.1f"|format(row.confidence|float * 100) }}%</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">No upcoming fights. Run the pipeline to refresh.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
