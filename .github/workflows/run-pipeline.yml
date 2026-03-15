@@ -26,8 +26,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run pipeline (quick, local + Azure)
-        run: python run_pipeline.py --quick --storage both
+      - name: Run pipeline (quick, Azure only)
+        run: python run_pipeline.py --quick --storage azure
 
       - name: Upload predictions
         uses: actions/upload-artifact@v4
