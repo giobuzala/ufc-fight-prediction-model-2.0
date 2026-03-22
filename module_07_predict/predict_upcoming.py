@@ -16,6 +16,9 @@ import joblib
 import pandas as pd
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 MODULE_06_OUTPUT = _PROJECT_ROOT / "module_06_model" / "output"
 MODULE_07_INPUT = Path(__file__).resolve().parent / "input"
 MODULE_07_OUTPUT = Path(__file__).resolve().parent / "output"
@@ -58,6 +61,14 @@ def main():
     feature_rows = data["feature_rows"]
     fight_metadata = data["fight_metadata"]
     feature_cols = data["feature_cols"]
+
+    from module_06_model.prepare_upcoming_features import filter_joblib_pairs_for_future_events
+
+    feature_rows, fight_metadata, skipped_past = filter_joblib_pairs_for_future_events(
+        feature_rows, fight_metadata
+    )
+    if skipped_past:
+        print(f"Excluded {skipped_past} fight(s) with event date before today (past cards).")
 
     if not feature_rows:
         print("No upcoming fights to predict.")

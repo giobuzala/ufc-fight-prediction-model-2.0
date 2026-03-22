@@ -8,7 +8,7 @@ Saves to module_07_predict/input/upcoming_for_prediction.joblib
 
 import csv
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -100,20 +100,81 @@ def _load_upcoming_rows(storage: str, upcoming_path: Path) -> tuple[list[dict], 
         return rows, f"local fallback {upcoming_path}"
 
 
+def _event_date_to_calendar_date(val) -> date | None:
+    """
+    Parse event_date from CSV (e.g. 'March 15, 2026') or Parquet (datetime / '2026-03-15' / ISO).
+
+    Parquet often serializes dates as ISO strings; _parse_event_date only handles month-name
+    formats, so past events were incorrectly kept when loading from Azure.
+    """
+    if val is None or val == "":
+        return None
+    try:
+        import pandas as pd
+
+        if isinstance(val, pd.Timestamp):
+            return val.date()
+    except ImportError:
+        pass
+    if isinstance(val, datetime):
+        return val.date()
+    if isinstance(val, date) and not isinstance(val, datetime):
+        return val
+    s = str(val).strip()
+    if not s:
+        return None
+    dt = _parse_event_date(s)
+    if dt is not None:
+        return dt.date()
+    # ISO / Parquet string forms (e.g. 2026-03-15, 2026-03-15 00:00:00)
+    if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+        try:
+            return datetime.strptime(s[:10], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    try:
+        s_iso = s.replace("Z", "+00:00", 1) if s.endswith("Z") else s
+        return datetime.fromisoformat(s_iso).date()
+    except ValueError:
+        pass
+    return None
+
+
 def _filter_past_events(upcoming: list[dict]) -> tuple[list[dict], int]:
     """Drop rows whose event_date parses and is before today (calendar)."""
     today = date.today()
     skipped = 0
     kept = []
     for r in upcoming:
-        ed_str = (r.get("event_date") or "").strip()
-        if ed_str:
-            ev_dt = _parse_event_date(ed_str)
-            if ev_dt is not None and ev_dt.date() < today:
-                skipped += 1
-                continue
+        ed = r.get("event_date")
+        ev_day = _event_date_to_calendar_date(ed)
+        if ev_day is not None and ev_day < today:
+            skipped += 1
+            continue
         kept.append(r)
     return kept, skipped
+
+
+def filter_joblib_pairs_for_future_events(
+    feature_rows: list,
+    fight_metadata: list[dict],
+) -> tuple[list, list[dict], int]:
+    """
+    Align feature rows with metadata and drop past events (same rules as _filter_past_events).
+    For use in module 7 when joblib may have been built before Parquet date parsing was fixed.
+    """
+    today = date.today()
+    skipped = 0
+    kept_f: list = []
+    kept_m: list[dict] = []
+    for fr, fm in zip(feature_rows, fight_metadata):
+        ev_day = _event_date_to_calendar_date(fm.get("event_date"))
+        if ev_day is not None and ev_day < today:
+            skipped += 1
+            continue
+        kept_f.append(fr)
+        kept_m.append(fm)
+    return kept_f, kept_m, skipped
 
 
 def _weight_class_to_lbs_upcoming(wc: str) -> str:
