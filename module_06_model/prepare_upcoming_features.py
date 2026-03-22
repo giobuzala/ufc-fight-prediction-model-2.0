@@ -155,72 +155,27 @@ def _filter_past_events(upcoming: list[dict]) -> tuple[list[dict], int]:
     return kept, skipped
 
 
-def _load_completed_event_urls(clean_fights_path: Path) -> set[str]:
-    """Event URLs that already have results in clean_ufc_fights (card completed / in history)."""
-    urls: set[str] = set()
-    if not clean_fights_path.exists():
-        return urls
-    with open(clean_fights_path, newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            u = (row.get("event_url") or "").strip()
-            if u:
-                urls.add(u)
-    return urls
-
-
-def _filter_already_completed_events(
-    upcoming: list[dict],
-    completed_event_urls: set[str],
-) -> tuple[list[dict], int]:
-    """
-    Drop upcoming rows whose event already appears in clean fight history.
-
-    UFCStats sometimes keeps finished cards on /events/upcoming with a stale scheduled date;
-    calendar filtering alone cannot remove those rows.
-    """
-    if not completed_event_urls:
-        return upcoming, 0
-    skipped = 0
-    kept: list[dict] = []
-    for r in upcoming:
-        eu = (r.get("event_url") or "").strip()
-        if eu and eu in completed_event_urls:
-            skipped += 1
-            continue
-        kept.append(r)
-    return kept, skipped
-
-
 def filter_joblib_pairs_for_future_events(
     feature_rows: list,
     fight_metadata: list[dict],
-    *,
-    clean_fights_path: Path | None = None,
-) -> tuple[list, list[dict], int, int]:
+) -> tuple[list, list[dict], int]:
     """
-    Drop past dates and events already in clean_ufc_fights (by event_url).
-    Returns (feature_rows, fight_metadata, skipped_past_date, skipped_completed).
+    Drop pairs whose event_date parses and is before today (calendar).
+    Returns (feature_rows, fight_metadata, skipped_past_date).
     """
     today = date.today()
     skipped_past = 0
-    skipped_done = 0
     kept_f: list = []
     kept_m: list[dict] = []
-    cfp = clean_fights_path if clean_fights_path is not None else DEFAULT_CLEAN_FIGHTS
-    completed_urls = _load_completed_event_urls(cfp)
 
     for fr, fm in zip(feature_rows, fight_metadata):
         ev_day = _event_date_to_calendar_date(fm.get("event_date"))
         if ev_day is not None and ev_day < today:
             skipped_past += 1
             continue
-        eu = (fm.get("event_url") or "").strip()
-        if eu and eu in completed_urls:
-            skipped_done += 1
-            continue
         kept_f.append(fr)
         kept_m.append(fm)
-    return kept_f, kept_m, skipped_past, skipped_done
+    return kept_f, kept_m, skipped_past
 
 
 def _weight_class_to_lbs_upcoming(wc: str) -> str:
@@ -445,16 +400,8 @@ def main(upcoming_path=None, clean_fights_path=None, clean_fighters_path=None, o
     if skipped_past:
         print(f"Excluded {skipped_past} row(s) with event date before {date.today().isoformat()}.")
 
-    completed_urls = _load_completed_event_urls(clean_fights_path)
-    upcoming, skipped_done = _filter_already_completed_events(upcoming, completed_urls)
-    if skipped_done:
-        print(
-            f"Excluded {skipped_done} row(s) whose event_url already appears in clean fight history "
-            f"(card completed; UFCStats may still list it as upcoming)."
-        )
-
     if not upcoming:
-        print("No upcoming fights after date / completed-event filters. Skipping prepare.")
+        print("No upcoming fights after date filter. Skipping prepare.")
         return
 
     event_date_cache = {}

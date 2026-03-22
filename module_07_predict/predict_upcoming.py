@@ -64,17 +64,11 @@ def main():
 
     from module_06_model.prepare_upcoming_features import filter_joblib_pairs_for_future_events
 
-    clean_fights = _PROJECT_ROOT / "module_03_clean_fights" / "output" / "clean_ufc_fights.csv"
-    feature_rows, fight_metadata, skipped_past, skipped_done = filter_joblib_pairs_for_future_events(
-        feature_rows, fight_metadata, clean_fights_path=clean_fights
+    feature_rows, fight_metadata, skipped_past = filter_joblib_pairs_for_future_events(
+        feature_rows, fight_metadata
     )
     if skipped_past:
         print(f"Excluded {skipped_past} fight(s) with event date before today (past cards).")
-    if skipped_done:
-        print(
-            f"Excluded {skipped_done} fight(s) whose event already appears in clean_ufc_fights "
-            f"(completed card; still listed as upcoming on UFCStats)."
-        )
 
     if not feature_rows:
         print("No upcoming fights to predict.")
