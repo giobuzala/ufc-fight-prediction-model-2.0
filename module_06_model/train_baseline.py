@@ -99,7 +99,7 @@ def main():
     # Prepare upcoming fights for module 7 (same as train_tuned)
     print("\nPreparing upcoming fights for module 7...")
     from prepare_upcoming_features import main as prepare_main
-    prepare_main()
+    prepare_main(storage=storage)
     if storage in ("azure", "both"):
         m07_joblib = MODULE_07_INPUT / "upcoming_for_prediction.joblib"
         if m07_joblib.exists():

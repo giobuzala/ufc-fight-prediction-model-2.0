@@ -110,7 +110,18 @@ def grid_search(estimator, param_grid, X_train, y_train, name: str = ""):
     return search.best_estimator_, search.best_score_
 
 
-def _run_search(X_train, y_train, X_val, y_val, X_test, y_test, n_feat, quick: bool, summary_date_str: str | None = None):
+def _run_search(
+    X_train,
+    y_train,
+    X_val,
+    y_val,
+    X_test,
+    y_test,
+    n_feat,
+    quick: bool,
+    summary_date_str: str | None = None,
+    storage: str = "local",
+):
     """Run model search. quick=True: LR+RF only, k=40, minimal grids, 2-fold (~1 min)."""
     if summary_date_str is None:
         summary_date_str = date.today().strftime("%Y%m%d")
@@ -353,7 +364,8 @@ def _run_search(X_train, y_train, X_val, y_val, X_test, y_test, n_feat, quick: b
     # Prepare upcoming fights for module 7
     print("\nPreparing upcoming fights for module 7...")
     from prepare_upcoming_features import main as prepare_main
-    prepare_main()
+
+    prepare_main(storage=storage)
 
 
 def main():
@@ -385,7 +397,18 @@ def main():
         print("QUICK MODE: LR + RF, k=40, minimal grids, 2-fold CV (~1 min)\n")
 
     summary_date = date.today().strftime("%Y%m%d")
-    _run_search(X_train, y_train, X_val, y_val, X_test, y_test, n_feat, quick=args.quick, summary_date_str=summary_date)
+    _run_search(
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        X_test,
+        y_test,
+        n_feat,
+        quick=args.quick,
+        summary_date_str=summary_date,
+        storage=storage,
+    )
 
     if storage in ("azure", "both"):
         from module_00_utils.azure_storage import upload_file_to_azure

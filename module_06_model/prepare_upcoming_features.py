@@ -1,12 +1,14 @@
 """
 Prepare upcoming fights for prediction. Output of module 6, input of module 7.
 
-Loads raw_ufc_upcoming.csv, computes fighter state, builds feature rows.
+Loads upcoming fights from local CSV (storage=local) or Azure Blob Parquet (storage=azure/both),
+computes fighter state, builds feature rows.
 Saves to module_07_predict/input/upcoming_for_prediction.joblib
 """
 
 import csv
 import sys
+from datetime import date
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -26,8 +28,92 @@ from feature_engineering import (
 )
 
 DEFAULT_UPCOMING = _MODULE_01 / "output" / "raw_ufc_upcoming.csv"
+# Same blob path as module_01_scrapers/ufc_upcoming_scraper.py (Parquet + CSV)
+UPCOMING_BLOB_PARQUET = "module_01_scrapers/output/raw_ufc_upcoming.parquet"
 DEFAULT_CLEAN_FIGHTS = _MODULE_04 / "input" / "clean_ufc_fights.csv"
 DEFAULT_CLEAN_FIGHTERS = _MODULE_02 / "output" / "clean_ufc_fighters.csv"
+
+
+def _load_upcoming_rows_from_local_csv(path: Path) -> list[dict]:
+    with open(path, newline="", encoding="utf-8") as f:
+        return [
+            r
+            for r in csv.DictReader(f)
+            if (r.get("fighter_1") or "").strip() and (r.get("fighter_2") or "").strip()
+        ]
+
+
+def _rows_from_parquet_dataframe(df) -> list[dict]:
+    """Normalize Parquet rows to string dicts like CSV DictReader."""
+    import pandas as pd
+
+    df = df.fillna("")
+    out = []
+    for rec in df.to_dict("records"):
+        row = {}
+        for k, v in rec.items():
+            if v is None or (isinstance(v, float) and pd.isna(v)):
+                row[k] = ""
+            elif isinstance(v, str):
+                row[k] = v.strip()
+            else:
+                row[k] = str(v).strip()
+        out.append(row)
+    return [
+        r
+        for r in out
+        if (r.get("fighter_1") or "").strip() and (r.get("fighter_2") or "").strip()
+    ]
+
+
+def _load_upcoming_rows(storage: str, upcoming_path: Path) -> tuple[list[dict], str]:
+    """
+    Load upcoming fight rows. local = disk CSV only; azure = Azure Parquet only;
+    both = Parquet first, then local CSV on failure.
+    """
+    storage = (storage or "local").strip().lower()
+    if storage == "local":
+        if not upcoming_path.exists():
+            return [], "local CSV missing"
+        rows = _load_upcoming_rows_from_local_csv(upcoming_path)
+        return rows, str(upcoming_path)
+
+    if str(_PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(_PROJECT_ROOT))
+    from module_00_utils.azure_storage import read_parquet_from_azure
+
+    if storage == "azure":
+        df = read_parquet_from_azure(UPCOMING_BLOB_PARQUET)
+        rows = _rows_from_parquet_dataframe(df)
+        return rows, f"azure:{UPCOMING_BLOB_PARQUET}"
+
+    # both
+    try:
+        df = read_parquet_from_azure(UPCOMING_BLOB_PARQUET)
+        rows = _rows_from_parquet_dataframe(df)
+        return rows, f"azure:{UPCOMING_BLOB_PARQUET}"
+    except Exception as e:
+        print(f"Could not read upcoming Parquet from Azure ({e}); falling back to local CSV.")
+        if not upcoming_path.exists():
+            return [], "azure failed and local CSV missing"
+        rows = _load_upcoming_rows_from_local_csv(upcoming_path)
+        return rows, f"local fallback {upcoming_path}"
+
+
+def _filter_past_events(upcoming: list[dict]) -> tuple[list[dict], int]:
+    """Drop rows whose event_date parses and is before today (calendar)."""
+    today = date.today()
+    skipped = 0
+    kept = []
+    for r in upcoming:
+        ed_str = (r.get("event_date") or "").strip()
+        if ed_str:
+            ev_dt = _parse_event_date(ed_str)
+            if ev_dt is not None and ev_dt.date() < today:
+                skipped += 1
+                continue
+        kept.append(r)
+    return kept, skipped
 
 
 def _weight_class_to_lbs_upcoming(wc: str) -> str:
@@ -201,14 +287,16 @@ def build_feature_row(fight, state1, state2, attrs1, attrs2, event_date) -> dict
     return row
 
 
-def main(upcoming_path=None, clean_fights_path=None, clean_fighters_path=None, output_dir=None):
+def main(upcoming_path=None, clean_fights_path=None, clean_fighters_path=None, output_dir=None, storage: str = "local"):
     import joblib
+
     upcoming_path = upcoming_path or DEFAULT_UPCOMING
     clean_fights_path = clean_fights_path or DEFAULT_CLEAN_FIGHTS
     clean_fighters_path = clean_fighters_path or DEFAULT_CLEAN_FIGHTERS
     output_dir = output_dir or MODULE_07_INPUT
+    storage = (storage or "local").strip().lower()
 
-    if not upcoming_path.exists():
+    if storage == "local" and not upcoming_path.exists():
         print(f"Upcoming fights not found: {upcoming_path}. Skipping prepare.")
         return
     if not clean_fights_path.exists() or not clean_fighters_path.exists():
@@ -240,12 +328,17 @@ def main(upcoming_path=None, clean_fights_path=None, clean_fighters_path=None, o
         url_norm = (url or "").strip().rstrip("/")
         return state_snapshot.get(url_norm) or state_snapshot.get(url_norm + "/") or state_snapshot.get(name)
 
-    upcoming = []
-    with open(upcoming_path, newline="", encoding="utf-8") as f:
-        upcoming = [r for r in csv.DictReader(f) if (r.get("fighter_1") or "").strip() and (r.get("fighter_2") or "").strip()]
-
+    upcoming, upcoming_src = _load_upcoming_rows(storage, upcoming_path)
     if not upcoming:
-        print("No upcoming fights. Skipping prepare.")
+        print(f"No upcoming fights loaded (source={upcoming_src}). Skipping prepare.")
+        return
+    print(f"Loaded {len(upcoming)} upcoming row(s) from {upcoming_src}.")
+
+    upcoming, skipped_past = _filter_past_events(upcoming)
+    if skipped_past:
+        print(f"Excluded {skipped_past} row(s) with event date before {date.today().isoformat()}.")
+    if not upcoming:
+        print("No upcoming fights after excluding past event dates. Skipping prepare.")
         return
 
     event_date_cache = {}
@@ -284,4 +377,14 @@ def main(upcoming_path=None, clean_fights_path=None, clean_fighters_path=None, o
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    _p = argparse.ArgumentParser(description="Prepare upcoming fights for module 7")
+    _p.add_argument(
+        "--storage",
+        choices=["local", "azure", "both"],
+        default="local",
+        help="local = raw_ufc_upcoming.csv only; azure = Azure Parquet only; both = Parquet then CSV fallback",
+    )
+    _args = _p.parse_args()
+    main(storage=_args.storage)
