@@ -5,28 +5,28 @@ Modular pipeline (run in order): **module_01** → **module_02** → **module_03
 ## Folder layout
 
 ```
-module_01_scrapers/     # 1. Fetch raw data from UFCStats.com
-  output/               # raw_ufc_fights.csv, raw_ufc_fighters.csv, raw_ufc_upcoming.csv
+module_01_scrapers/              # 1. Fetch raw data from UFCStats.com
+  output/                        # raw_ufc_fights.csv, raw_ufc_fighters.csv, raw_ufc_upcoming.csv
 
-module_02_clean_fighters/   # 2. Normalize fighter CSV
-  input/  output/          # clean_ufc_fighters.csv
+module_02_clean_fighters/        # 2. Normalize fighter CSV
+  input/  output/                # clean_ufc_fighters.csv
 
-module_03_clean_fights/     # 3. Join fighters + clean fight CSV
-  input/  output/          # clean_ufc_fights.csv
+module_03_clean_fights/          # 3. Join fighters + clean fight CSV
+  input/  output/                # clean_ufc_fights.csv
 
 module_04_feature_engineering/   # 4. Feature engineering
-  input/  output/          # ufc_fights_fe.csv
+  input/  output/                # ufc_fights_fe.csv
 
-module_05_split/           # 5. Prep + temporal split
-  input/  output/          # preprocessor_diff.joblib, X_train_diff.npz, etc.
+module_05_split/                 # 5. Prep + temporal split
+  input/  output/                # preprocessor_diff.joblib, X_train_diff.npz, etc.
 
-module_06_model/           # 6. Full grid search, pick best model
-  input/  output/          # best_model.joblib, preprocessor_diff.joblib
-                           # → prepares upcoming_for_prediction.joblib for module_07
+module_06_model/                 # 6. Full grid search, pick best model
+  input/  output/                # best_model.joblib, preprocessor_diff.joblib
+                                 # → prepares upcoming_for_prediction.joblib for module_07
 
-module_07_predict/         # 7. Predict upcoming fights
-  input/                   # upcoming_for_prediction.joblib (from module_06)
-  output/                  # upcoming_predictions.csv
+module_07_predict/               # 7. Predict upcoming fights
+  input/                         # upcoming_for_prediction.joblib (from module_06)
+  output/                        # upcoming_predictions.csv
 ```
 
 ## Pipeline (run in order)
